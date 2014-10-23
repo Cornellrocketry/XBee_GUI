@@ -1,4 +1,5 @@
 XBee.log*
+/log
 
 # Directories #
 /build/

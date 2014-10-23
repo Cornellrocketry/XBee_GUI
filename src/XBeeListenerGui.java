@@ -39,37 +39,24 @@ import com.rapplogic.xbee.util.ByteUtils;
 
 public class XBeeListenerGui extends javax.swing.JFrame {
 
-	private static final int baud = 9600;
+	private static final int baud = 9600; //serial comm rate
 
-	private String selSerial;
-	private int[] selAddr = new int[8];
 
 	private static final String[] addresses = { "1: 0013A200 / 40BF5647", "2: 0013A200 / 40BF56A5",
 			"3: 0013A200 / 409179A7", "4: 0013A200 / 4091796F" };
 
-	private static final int[][] addr = { { 0, 0x13, 0xa2, 0, 0x40, 0xbf, 0x56, 0x47 },
-			{ 0, 0x13, 0xa2, 0, 0x40, 0xbf, 0x56, 0xa5 }, { 0, 0x13, 0xa2, 0, 0x40, 0x91, 0x79, 0xa7 },
-			{ 0, 0x13, 0xa2, 0, 0x40, 0x91, 0x79, 0x6f } };
-
-	// final XBeeAddress64 addr64 = new XBeeAddress64(0, 0x13, 0xa2, 0, 0x40,
-	// 0x91, 0x79, 0xa7);
-	// final XBeeAddress64 addr64 = new XBeeAddress64(0, 0x13, 0xa2, 0, 0x40,
-	// 0x91, 0x79, 0x6f);
-
-	// new xbees:
-	// small cable:
-	// final XBeeAddress64 addr64 = new XBeeAddress64(0, 0x13, 0xa2, 0, 0x40,
-	// 0xbf, 0x56, 0xa5);
-
-	// long cable:
-	// final XBeeAddress64 addr64 = new XBeeAddress64(0, 0x13, 0xa2, 0, 0x40,
-	// 0xbf, 0x56, 0x47);
+	private static final XBeeAddress64 addr[] = { new XBeeAddress64(0, 0x13, 0xa2, 0, 0x40, 0xbf, 0x56, 0x47),	//long cable
+							 					  new XBeeAddress64(0, 0x13, 0xa2, 0, 0x40, 0xbf, 0x56, 0xa5),	//new xbees, small cable
+							 					  new XBeeAddress64(0, 0x13, 0xa2, 0, 0x40, 0x91, 0x79, 0xa7),
+							 					  new XBeeAddress64(0, 0x13, 0xa2, 0, 0x40, 0x91, 0x79, 0x6f)
+												};
 
 	private XBeeAddress64 addr64;
 	private XBeeListenerThread xbeeListener;
-	private int nr = 0;
-	private int ns = 0;
-	private int ne = 0;
+	
+	private int nr = 0; //number received packets
+	private int ns = 0;	//number sent packets
+	private int ne = 0; //number error packets
 
 	private JLabel packetLabel;
 	private JLabel nLabel;
@@ -83,8 +70,10 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 	private JComboBox serialPortsList;
 	private JComboBox addressesList;
 
-	public XBee xbee; //keep as public reference
+	public XBee xbee; //keep as public reference @see XBeeListenerThread.java
 	
+	
+	/* Getters and Setters for packet counters*/
 	public int getNumSent() { return ns;}
 	public void incNumSent() { ns++; }
 	public int getNumRec() {return nr;}
@@ -92,6 +81,7 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 	public int getNumError() {return ne;}
 	public void incNumError() { ne++; }
 
+	
 	public XBeeListenerGui() {
 
 		// String path= System.getProperty("user.dir");
@@ -113,46 +103,32 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 		// JSONObject obj= new JSONObject("{\"name\": \"booster\"}");
 		// System.out.println("Before WHILE JSON: " + obj.getString("name"));
 
-		// final XBeeAddress64 addr64 = new XBeeAddress64(0, 0x13, 0xa2, 0,
-		// 0x40, 0x91, 0x79, 0xa7);
-		// final XBeeAddress64 addr64 = new XBeeAddress64(0, 0x13, 0xa2, 0,
-		// 0x40, 0x91, 0x79, 0x6f);
-
-		// new xbees:
-		// small cable:
-		// final XBeeAddress64 addr64 = new XBeeAddress64(0, 0x13, 0xa2, 0,
-		// 0x40, 0xbf, 0x56, 0xa5);
-
-		// long cable:
-		// final XBeeAddress64 addr64 = new XBeeAddress64(0, 0x13, 0xa2, 0,
-		// 0x40, 0xbf, 0x56, 0x47);
-
 		/*
 		 * int[] payload = new int[] {'P' }; final ZNetTxRequest request = new
 		 * ZNetTxRequest(addr64, payload);
 		 */
 
-		// Layout GUI...
-		setTitle("XBee Tester");
-		// JFrame f = new JFrame("XBee Tester");
+		// Layout GUI
 		JPanel fullPanel = new JPanel(new BorderLayout());
 		setContentPane(fullPanel);
 
+		/*-----------------------------Setup XBees Panel----------------------------*/
 		JPanel xbeeInitPanel = new JPanel(new BorderLayout());
 		JLabel xbeeInitLabel = new JLabel("Setup XBees", JLabel.CENTER);
 		xbeeInitLabel.setFont(titleFont);
 		xbeeInitPanel.add(xbeeInitLabel, BorderLayout.NORTH);
-
+		
+		//XBee Serial Port Label
 		JPanel xbeeInitGrid = new JPanel(new GridLayout(2, 2));
 		JPanel serialPortPanel = new JPanel(new BorderLayout());
 		serialPortPanel.add(new JLabel("GS XBee Serial Port: "), BorderLayout.WEST);
 
-		// Initializing xbee...
-		String[] list = { "" };
-		serialPortsList = new JComboBox(list);
+		//Serial port dropdown
+		serialPortsList = new JComboBox<String[]>(); //initialize empty dropdown
 		updateSerialPortsList();
 		serialPortsList.setSelectedIndex(serialPortsList.getItemCount() - 1);
 
+		//Refresh serial ports button
 		serialPortPanel.add(serialPortsList, BorderLayout.CENTER);
 		JButton refreshPortsBtn = new JButton("Refresh");
 		refreshPortsBtn.addActionListener(new ActionListener() {
@@ -163,6 +139,7 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 		serialPortPanel.add(refreshPortsBtn, BorderLayout.EAST);
 		xbeeInitGrid.add(serialPortPanel);
 
+		//Wireless Address Dropdown
 		JPanel addressPanel = new JPanel(new BorderLayout());
 		addressPanel.add(new JLabel("Wireless XBee Address (1):"), BorderLayout.WEST);
 		addressesList = new JComboBox(addresses);
@@ -172,11 +149,11 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 				updateAddr();
 			}
 		});
-
 		addressPanel.add(addressesList, BorderLayout.CENTER);
 		xbeeInitGrid.add(addressPanel);
 		xbeeInitPanel.add(xbeeInitGrid, BorderLayout.CENTER);
 
+		//Initialize GS XBee Button
 		JButton initXBeeButton = new JButton("Initialize GS XBee");
 		initXBeeButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -193,11 +170,10 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 				}
 			}
 		});
-
 		JPanel xbeeInitButtons = new JPanel(new BorderLayout());
-
 		xbeeInitButtons.add(initXBeeButton, BorderLayout.NORTH);
 
+		//Test Send Button
 		JButton testSendBtn = new JButton("Test Send");
 		testSendBtn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -206,19 +182,18 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 		});
 		xbeeInitButtons.add(testSendBtn, BorderLayout.SOUTH);
 
+		//Add initialize XBee and Test buttons
 		xbeeInitPanel.add(xbeeInitButtons, BorderLayout.SOUTH);
 
-		JPanel p = new JPanel(new BorderLayout());
-
+		//Send Packet Title and Button
+		JPanel sendPacketsPanel = new JPanel(new BorderLayout());
 		JLabel sendTitle = new JLabel("Send Packets", JLabel.CENTER);
 		sendTitle.setFont(titleFont);
-		p.add(sendTitle, BorderLayout.NORTH);
+		sendPacketsPanel.add(sendTitle, BorderLayout.NORTH);
 
 		JButton btn = new JButton("Send Data");
-
 		btn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-
 				// For debugging:
 				/*
 				 * nr= nr+1; addToReceiveText("Received (" + nr + "): " +
@@ -226,28 +201,29 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 				 */
 
 				sendXBeePacket();
-
 			}
 
 		});
 
-		p.add(btn, BorderLayout.CENTER);
+		sendPacketsPanel.add(btn, BorderLayout.CENTER);
+		
+		//Send Custom Packet Textbox
 		JPanel p2 = new JPanel(new BorderLayout());
 		p2.add(new JLabel("Send Packet: "), BorderLayout.WEST);
 		sendEdit = new JTextField("", 20);
 		p2.add(sendEdit, BorderLayout.CENTER);
 		// p2.add(new JLabel(""));
-
 		/*
 		 * p2.add(new JLabel("Recieved Packet: ")); packetLabel= new JLabel("");
 		 * p2.add(packetLabel); p2.add(new JLabel("Count: ")); nLabel= new
 		 * JLabel("" + n); p2.add(nLabel);
 		 */
-		p.add(p2, BorderLayout.SOUTH);
+		sendPacketsPanel.add(p2, BorderLayout.SOUTH);
 		JPanel PContainer = new JPanel(new BorderLayout());
 		PContainer.add(xbeeInitPanel, BorderLayout.NORTH);
-		PContainer.add(p, BorderLayout.CENTER);
+		PContainer.add(sendPacketsPanel, BorderLayout.CENTER);
 
+		/*----------------------------Received Packets Panel-----------------------------*/
 		JPanel receivePanel = new JPanel(new BorderLayout());
 		receiveText = new JTextArea(40, 60);
 		receiveText.setBackground(Color.white);
@@ -265,6 +241,9 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 		fullPanel.add(PContainer, BorderLayout.WEST);
 		fullPanel.add(receivePanel, BorderLayout.CENTER);
 
+		
+		//Main window props
+		setTitle("XBee Tester");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setResizable(false);
 		pack();
@@ -274,17 +253,15 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 
 	}
 
+	/* TODO: function not necessary*/
 	public void updateAddr() {
-		int idx = addressesList.getSelectedIndex();
-		selAddr = addr[idx];
-		addr64 = new XBeeAddress64(selAddr[0], selAddr[1], selAddr[2], selAddr[3], selAddr[4], selAddr[5], selAddr[6],
-				selAddr[7]);
+		addr64 = addr[addressesList.getSelectedIndex()];
 	}
 
 	public void initXbee() throws XBeeException {
 
 		// get selected serial port...
-		selSerial = (String) serialPortsList.getSelectedItem();
+		String selSerial = (String) serialPortsList.getSelectedItem();
 
 		if (xbee != null && xbee.isConnected()) {
 			xbee.close();
@@ -303,8 +280,8 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 		xbeeListener = new XBeeListenerThread(this);
 		xbeeListener.start();
 
-		// update addresses of wireless xbees...
-		updateAddr();
+		// update addresses of wireless xbees
+		updateAddr(); //TODO: isn't address already updated in the dropdown's event handler?
 
 		nr = 0;
 		ns = 0;
