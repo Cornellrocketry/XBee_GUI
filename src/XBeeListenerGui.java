@@ -37,6 +37,9 @@ import com.rapplogic.xbee.api.zigbee.ZNetTxRequest;
 import com.rapplogic.xbee.api.zigbee.ZNetTxStatusResponse;
 import com.rapplogic.xbee.util.ByteUtils;
 
+/**
+ * An instance of XBeeListenerGui contains the GUI: initialization and display
+ */
 public class XBeeListenerGui extends javax.swing.JFrame {
 
 	private static final int baud = 9600; //serial comm rate
@@ -63,14 +66,13 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 
 	private JTextArea receiveText;
 	private JTextField sendEdit;
-	private int[] payload;
 	private final static Font titleFont = new Font("Arial", Font.BOLD, 20);
 	private final static Font textAreaFont = new Font("Arial", Font.PLAIN, 10);
 
 	private JComboBox serialPortsList;
 	private JComboBox addressesList;
 
-	public XBee xbee; //keep as public reference @see XBeeListenerThread.java
+	public XBee xbee = new XBee(); //keep as public reference @see XBeeListenerThread.java
 	
 	
 	/* Getters and Setters for packet counters*/
@@ -80,8 +82,11 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 	public void incNumRec() { nr++; }
 	public int getNumError() {return ne;}
 	public void incNumError() { ne++; }
+	public void resetPacketCounters() { ns=0; nr=0; ne=0; }
 
-	
+	/**
+	 * Constructor 
+	 */
 	public XBeeListenerGui() {
 
 		// String path= System.getProperty("user.dir");
@@ -267,32 +272,41 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 			xbee.close();
 			xbeeListener.stopListening();
 		}
+		
+		//TODO: Explain?
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		xbee = new XBee();
+		
 		// xbee.open("/dev/cu.usbserial-A5025UEI", 9600);
 		System.out.println(selSerial);
-		xbee.open(selSerial, baud);
-		xbeeListener = new XBeeListenerThread(this);
+		xbee.open(selSerial, baud); //open port
+		xbeeListener = new XBeeListenerThread(this); //init a new listener thread
 		xbeeListener.start();
 
 		// update addresses of wireless xbees
 		updateAddr(); //TODO: isn't address already updated in the dropdown's event handler?
 
-		nr = 0;
-		ns = 0;
-		ne = 0;
+		resetPacketCounters();
 	}
 
+	/**
+	 * Send a packet to the remote XBee containing user defined text
+	 * @TODO: Remove, collect text on actionperformed and invoke single param analog
+	 * @void
+	 */
 	public void sendXBeePacket() {
 		String r = sendEdit.getText();
 		sendXBeePacket(r);
 	}
 
+	/**
+	 * Send a packet to remote XBee
+	 * @param r		text to send
+	 */
 	public void sendXBeePacket(String r) {
 		try {
 			// send a request and wait up to 10 seconds for the response
@@ -305,7 +319,7 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 			if (response.isSuccess()) {
 				// packet was delivered successfully
 				// System.out.println("Success!");
-				ns = ns + 1;
+				ns++;
 				addToReceiveText("Sent (" + ns + "): " + r);
 			} else {
 				// packet was not delivered
@@ -331,6 +345,10 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 
 	}
 
+	/**
+	 * updated the Serial Port List (i.e. after a refresh)
+	 * @void
+	 */
 	public void updateSerialPortsList() {
 		ArrayList<String> comboBoxList = new ArrayList<String>();
 		Enumeration portList = CommPortIdentifier.getPortIdentifiers();// this line was false
@@ -351,11 +369,21 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 		}
 	}
 
+	/**
+	 * Adds text to the Received Packets Box
+	 * @param txt			text to add
+	 */
 	public void addToReceiveText(String txt) {
 		receiveText.setText(receiveText.getText() + "- " + txt + System.getProperty("line.separator"));
 		receiveText.setCaretPosition(receiveText.getDocument().getLength()); // locks scroll at bottom
 	}
 
+	/**
+	 * Entry point of the program
+	 * @param args
+	 * @throws XBeeException
+	 * @throws InterruptedException
+	 */
 	public static void main(String[] args) throws XBeeException, InterruptedException {
 
 		java.awt.EventQueue.invokeLater(new Runnable() {
