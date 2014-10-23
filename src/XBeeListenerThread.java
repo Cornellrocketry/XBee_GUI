@@ -13,19 +13,23 @@ import com.rapplogic.xbee.util.ByteUtils;
 
 public class XBeeListenerThread extends Thread {
 
-	public String data = "";
-	public boolean keepListening;
+	private String data = "";
+	private boolean keepListening;
 	static boolean receiving = false;
+	private XBeeListenerGui mainWindow;
 
-	public XBeeListenerThread() {
+	public XBeeListenerThread(XBeeListenerGui gui) {
+		mainWindow = gui;
 		keepListening = true;
 	}
+	
+	public void stopListening() { keepListening = false; }
 
 	@Override
 	public void run() {
 		while (keepListening) {
 			try {
-				XBeeResponse response = Main.xbee.getResponse();
+				XBeeResponse response = mainWindow.xbee.getResponse();
 				// System.out.println(response.getApiId().toString());
 				// System.out.println(response.getClass().toString());
 				if (response.getApiId() == ApiId.ZNET_RX_RESPONSE) {
@@ -41,21 +45,21 @@ public class XBeeListenerThread extends Thread {
 						System.out.println("start!");
 						if (receiving) {
 							// System.out.println("ERROR: new packet before last data stream ended");
-							Main.ne++;
-							Main.addToReceiveText("Error ("
-									+ Main.ne
+							mainWindow.incNumError();
+							mainWindow.addToReceiveText("Error ("
+									+ mainWindow.getNumError()
 									+ "): New packet before last data stream ended...");
-							Main.nr++;
-							Main.addToReceiveText("Incomplete Received ("
-									+ Main.nr + "): " + data);
-							Main.nr++;
-							Main.addToReceiveText("New Received (" + Main.nr
+							mainWindow.incNumRec();
+							mainWindow.addToReceiveText("Incomplete Received ("
+									+ mainWindow.getNumRec() + "): " + data);
+							mainWindow.incNumRec();
+							mainWindow.addToReceiveText("New Received (" + mainWindow.getNumRec()
 									+ "): " + packet);
 						}
 						receiving = true;
 					} else if (!receiving) {
-						Main.nr++;
-						Main.addToReceiveText("Received (" + Main.nr + "): "
+						mainWindow.incNumRec();
+						mainWindow.addToReceiveText("Received (" + mainWindow.getNumRec() + "): "
 								+ packet);
 					} else {
 						// System.out.println("recieved...!");
@@ -65,8 +69,8 @@ public class XBeeListenerThread extends Thread {
 							// end of data stream reached--> return data and
 							// reset...
 							// System.out.println(data);
-							Main.nr++;
-							Main.addToReceiveText("Received (" + Main.nr
+							mainWindow.incNumRec();
+							mainWindow.addToReceiveText("Received (" + mainWindow.getNumRec()
 									+ "): " + data);
 							receiving = false;
 							data = "";
@@ -77,8 +81,8 @@ public class XBeeListenerThread extends Thread {
 			} catch (XBeeTimeoutException e) {
 				// we timed out without a response
 			} catch (XBeeException e) {
-				Main.ne++;
-				Main.addToReceiveText("Error (" + Main.ne + "): XBee Problem: "
+				mainWindow.incNumError();
+				mainWindow.addToReceiveText("Error (" + mainWindow.getNumError() + "): XBee Problem: "
 						+ e.getMessage());
 				e.printStackTrace();
 			}

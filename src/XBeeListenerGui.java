@@ -37,20 +37,18 @@ import com.rapplogic.xbee.api.zigbee.ZNetTxRequest;
 import com.rapplogic.xbee.api.zigbee.ZNetTxStatusResponse;
 import com.rapplogic.xbee.util.ByteUtils;
 
-public class Main {
+public class XBeeListenerGui extends javax.swing.JFrame {
 
 	private static final int baud = 9600;
 
-	static String selSerial;
-	static int[] selAddr = new int[8];
+	private String selSerial;
+	private int[] selAddr = new int[8];
 
-	static String[] addresses = { "1: 0013A200 / 40BF5647",
-			"2: 0013A200 / 40BF56A5", "3: 0013A200 / 409179A7",
-			"4: 0013A200 / 4091796F" };
+	private static final String[] addresses = { "1: 0013A200 / 40BF5647", "2: 0013A200 / 40BF56A5",
+			"3: 0013A200 / 409179A7", "4: 0013A200 / 4091796F" };
 
-	static int[][] addr = { { 0, 0x13, 0xa2, 0, 0x40, 0xbf, 0x56, 0x47 },
-			{ 0, 0x13, 0xa2, 0, 0x40, 0xbf, 0x56, 0xa5 },
-			{ 0, 0x13, 0xa2, 0, 0x40, 0x91, 0x79, 0xa7 },
+	private static final int[][] addr = { { 0, 0x13, 0xa2, 0, 0x40, 0xbf, 0x56, 0x47 },
+			{ 0, 0x13, 0xa2, 0, 0x40, 0xbf, 0x56, 0xa5 }, { 0, 0x13, 0xa2, 0, 0x40, 0x91, 0x79, 0xa7 },
 			{ 0, 0x13, 0xa2, 0, 0x40, 0x91, 0x79, 0x6f } };
 
 	// final XBeeAddress64 addr64 = new XBeeAddress64(0, 0x13, 0xa2, 0, 0x40,
@@ -67,139 +65,34 @@ public class Main {
 	// final XBeeAddress64 addr64 = new XBeeAddress64(0, 0x13, 0xa2, 0, 0x40,
 	// 0xbf, 0x56, 0x47);
 
-	static XBeeAddress64 addr64;
-	static XBeeListenerThread xbeeListener;
-	static int nr;
-	static int ns;
-	static int ne;
+	private XBeeAddress64 addr64;
+	private XBeeListenerThread xbeeListener;
+	private int nr = 0;
+	private int ns = 0;
+	private int ne = 0;
 
-	static JLabel packetLabel;
-	static JLabel nLabel;
+	private JLabel packetLabel;
+	private JLabel nLabel;
 
-	static JTextArea receiveText;
-	static JTextField sendEdit;
-	int[] payload;
+	private JTextArea receiveText;
+	private JTextField sendEdit;
+	private int[] payload;
 	private final static Font titleFont = new Font("Arial", Font.BOLD, 20);
 	private final static Font textAreaFont = new Font("Arial", Font.PLAIN, 10);
 
-	static JComboBox serialPortsList;
-	static JComboBox addressesList;
+	private JComboBox serialPortsList;
+	private JComboBox addressesList;
 
-	static XBee xbee;
+	public XBee xbee; //keep as public reference
+	
+	public int getNumSent() { return ns;}
+	public void incNumSent() { ns++; }
+	public int getNumRec() {return nr;}
+	public void incNumRec() { nr++; }
+	public int getNumError() {return ne;}
+	public void incNumError() { ne++; }
 
-	public static void updateAddr() {
-		int idx = addressesList.getSelectedIndex();
-		selAddr = addr[idx];
-		addr64 = new XBeeAddress64(selAddr[0], selAddr[1], selAddr[2],
-				selAddr[3], selAddr[4], selAddr[5], selAddr[6], selAddr[7]);
-	}
-
-	public static void initXbee() throws XBeeException {
-
-		// get selected serial port...
-		selSerial = (String) serialPortsList.getSelectedItem();
-
-		if (xbee != null && xbee.isConnected()) {
-			xbee.close();
-			xbeeListener.keepListening = false;
-		}
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		xbee = new XBee();
-		// xbee.open("/dev/cu.usbserial-A5025UEI", 9600);
-		System.out.println(selSerial);
-		xbee.open(selSerial, baud);
-		xbeeListener = new XBeeListenerThread();
-		xbeeListener.start();
-
-		// update addresses of wireless xbees...
-		updateAddr();
-
-		nr = 0;
-		ns = 0;
-		ne = 0;
-	}
-
-	public static void sendXBeePacket() {
-		String r = sendEdit.getText();
-		sendXBeePacket(r);
-	}
-
-	public static void sendXBeePacket(String r) {
-		try {
-			// send a request and wait up to 10 seconds for the response
-			int[] payload = new int[r.length()];
-			for (int i = 0; i < r.length(); i++) {
-				payload[i] = r.charAt(i);
-			}
-			final ZNetTxRequest request = new ZNetTxRequest(addr64, payload);
-			ZNetTxStatusResponse response = (ZNetTxStatusResponse) xbee
-					.sendSynchronous(request, 10000);
-			if (response.isSuccess()) {
-				// packet was delivered successfully
-				// System.out.println("Success!");
-				ns = ns + 1;
-				addToReceiveText("Sent (" + ns + "): " + r);
-			} else {
-				// packet was not delivered
-				// System.out.println("Packet was not delivered");
-				ne++;
-				addToReceiveText("Error (" + ne + "): Packet not delivered - '"
-						+ r + "'");
-			}
-		} catch (XBeeTimeoutException e1) {
-			// System.out.println("THERE WAS AN ERROR");
-			ne++;
-			addToReceiveText("Error (" + ne
-					+ "): Packet delivery timed out - '" + r + "'");
-			// no response was received in the allotted time
-
-		} catch (XBeeException e1) {
-			ne++;
-			addToReceiveText("Error (" + ne
-					+ "): Packet not delivered b/c of XBee Exception: "
-					+ e1.getMessage());
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (Exception e) {
-			ne++;
-			addToReceiveText("Error (" + ne
-					+ "): Java Error. Make sure GS XBee is initialized: "
-					+ e.getMessage());
-		}
-
-	}
-
-	public static void updateSerialPortsList() {
-		ArrayList<String> comboBoxList = new ArrayList<String>();
-		Enumeration portList = CommPortIdentifier.getPortIdentifiers();// this
-																		// line
-																		// was
-																		// false
-		while (portList.hasMoreElements()) {
-			CommPortIdentifier portId = (CommPortIdentifier) portList
-					.nextElement();
-			if (portId.getPortType() == CommPortIdentifier.PORT_SERIAL) {
-				comboBoxList.add(portId.getName());
-				// System.out.println(portId.getName());
-			} else {
-				// System.out.println(portId.getName());
-			}
-		}
-
-		// update list...
-		serialPortsList.removeAllItems();
-		for (String s : comboBoxList) {
-			serialPortsList.addItem(s);
-		}
-	}
-
-	public static void main(String[] args) throws XBeeException,
-			InterruptedException {
+	public XBeeListenerGui() {
 
 		// String path= System.getProperty("user.dir");
 
@@ -239,15 +132,11 @@ public class Main {
 		 * ZNetTxRequest(addr64, payload);
 		 */
 
-		nr = 0;
-		ns = 0;
-		ne = 0;
-
 		// Layout GUI...
-
-		JFrame f = new JFrame("XBee Tester");
+		setTitle("XBee Tester");
+		// JFrame f = new JFrame("XBee Tester");
 		JPanel fullPanel = new JPanel(new BorderLayout());
-		f.setContentPane(fullPanel);
+		setContentPane(fullPanel);
 
 		JPanel xbeeInitPanel = new JPanel(new BorderLayout());
 		JLabel xbeeInitLabel = new JLabel("Setup XBees", JLabel.CENTER);
@@ -256,8 +145,7 @@ public class Main {
 
 		JPanel xbeeInitGrid = new JPanel(new GridLayout(2, 2));
 		JPanel serialPortPanel = new JPanel(new BorderLayout());
-		serialPortPanel.add(new JLabel("GS XBee Serial Port: "),
-				BorderLayout.WEST);
+		serialPortPanel.add(new JLabel("GS XBee Serial Port: "), BorderLayout.WEST);
 
 		// Initializing xbee...
 		String[] list = { "" };
@@ -276,8 +164,7 @@ public class Main {
 		xbeeInitGrid.add(serialPortPanel);
 
 		JPanel addressPanel = new JPanel(new BorderLayout());
-		addressPanel.add(new JLabel("Wireless XBee Address (1):"),
-				BorderLayout.WEST);
+		addressPanel.add(new JLabel("Wireless XBee Address (1):"), BorderLayout.WEST);
 		addressesList = new JComboBox(addresses);
 		addressesList.setSelectedIndex(0);
 		addressesList.addActionListener(new ActionListener() {
@@ -378,22 +265,126 @@ public class Main {
 		fullPanel.add(PContainer, BorderLayout.WEST);
 		fullPanel.add(receivePanel, BorderLayout.CENTER);
 
-		f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		f.setResizable(false);
-		f.pack();
-		f.setVisible(true);
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setResizable(false);
+		pack();
+		setVisible(true);
 
 		// Text area stuff...
 
 	}
 
-	public static void addToReceiveText(String txt) {
-		receiveText.setText(receiveText.getText() + "- " + txt
-				+ System.getProperty("line.separator"));
-		receiveText.setCaretPosition(receiveText.getDocument().getLength()); // locks
-																				// scroll
-																				// at
-																				// bottom
+	public void updateAddr() {
+		int idx = addressesList.getSelectedIndex();
+		selAddr = addr[idx];
+		addr64 = new XBeeAddress64(selAddr[0], selAddr[1], selAddr[2], selAddr[3], selAddr[4], selAddr[5], selAddr[6],
+				selAddr[7]);
 	}
 
+	public void initXbee() throws XBeeException {
+
+		// get selected serial port...
+		selSerial = (String) serialPortsList.getSelectedItem();
+
+		if (xbee != null && xbee.isConnected()) {
+			xbee.close();
+			xbeeListener.stopListening();
+		}
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		xbee = new XBee();
+		// xbee.open("/dev/cu.usbserial-A5025UEI", 9600);
+		System.out.println(selSerial);
+		xbee.open(selSerial, baud);
+		xbeeListener = new XBeeListenerThread(this);
+		xbeeListener.start();
+
+		// update addresses of wireless xbees...
+		updateAddr();
+
+		nr = 0;
+		ns = 0;
+		ne = 0;
+	}
+
+	public void sendXBeePacket() {
+		String r = sendEdit.getText();
+		sendXBeePacket(r);
+	}
+
+	public void sendXBeePacket(String r) {
+		try {
+			// send a request and wait up to 10 seconds for the response
+			int[] payload = new int[r.length()];
+			for (int i = 0; i < r.length(); i++) {
+				payload[i] = r.charAt(i);
+			}
+			final ZNetTxRequest request = new ZNetTxRequest(addr64, payload);
+			ZNetTxStatusResponse response = (ZNetTxStatusResponse) xbee.sendSynchronous(request, 10000);
+			if (response.isSuccess()) {
+				// packet was delivered successfully
+				// System.out.println("Success!");
+				ns = ns + 1;
+				addToReceiveText("Sent (" + ns + "): " + r);
+			} else {
+				// packet was not delivered
+				// System.out.println("Packet was not delivered");
+				ne++;
+				addToReceiveText("Error (" + ne + "): Packet not delivered - '" + r + "'");
+			}
+		} catch (XBeeTimeoutException e1) {
+			// System.out.println("THERE WAS AN ERROR");
+			ne++;
+			addToReceiveText("Error (" + ne + "): Packet delivery timed out - '" + r + "'");
+			// no response was received in the allotted time
+
+		} catch (XBeeException e1) {
+			ne++;
+			addToReceiveText("Error (" + ne + "): Packet not delivered b/c of XBee Exception: " + e1.getMessage());
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (Exception e) {
+			ne++;
+			addToReceiveText("Error (" + ne + "): Java Error. Make sure GS XBee is initialized: " + e.getMessage());
+		}
+
+	}
+
+	public void updateSerialPortsList() {
+		ArrayList<String> comboBoxList = new ArrayList<String>();
+		Enumeration portList = CommPortIdentifier.getPortIdentifiers();// this line was false
+		while (portList.hasMoreElements()) {
+			CommPortIdentifier portId = (CommPortIdentifier) portList.nextElement();
+			if (portId.getPortType() == CommPortIdentifier.PORT_SERIAL) {
+				comboBoxList.add(portId.getName());
+				// System.out.println(portId.getName());
+			} else {
+				// System.out.println(portId.getName());
+			}
+		}
+
+		// update list...
+		serialPortsList.removeAllItems();
+		for (String s : comboBoxList) {
+			serialPortsList.addItem(s);
+		}
+	}
+
+	public void addToReceiveText(String txt) {
+		receiveText.setText(receiveText.getText() + "- " + txt + System.getProperty("line.separator"));
+		receiveText.setCaretPosition(receiveText.getDocument().getLength()); // locks scroll at bottom
+	}
+
+	public static void main(String[] args) throws XBeeException, InterruptedException {
+
+		java.awt.EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				new XBeeListenerGui().setVisible(true);
+			}
+		});
+	}
 }
