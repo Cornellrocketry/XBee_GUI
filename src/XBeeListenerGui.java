@@ -151,7 +151,7 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 		addressesList.setSelectedIndex(0);
 		addressesList.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				updateAddr();
+				addr64 = addr[addressesList.getSelectedIndex()]; //set active address
 			}
 		});
 		addressPanel.add(addressesList, BorderLayout.CENTER);
@@ -199,13 +199,12 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 		JButton btn = new JButton("Send Data");
 		btn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				sendXBeePacket(sendEdit.getText());
 				// For debugging:
 				/*
 				 * nr= nr+1; addToReceiveText("Received (" + nr + "): " +
 				 * sendEdit.getText(),receiveText);
 				 */
-
-				sendXBeePacket();
 			}
 
 		});
@@ -258,11 +257,6 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 
 	}
 
-	/* TODO: function not necessary*/
-	public void updateAddr() {
-		addr64 = addr[addressesList.getSelectedIndex()];
-	}
-
 	public void initXbee() throws XBeeException {
 
 		// get selected serial port...
@@ -288,19 +282,10 @@ public class XBeeListenerGui extends javax.swing.JFrame {
 		xbeeListener.start();
 
 		// update addresses of wireless xbees
-		updateAddr(); //TODO: isn't address already updated in the dropdown's event handler?
+		// addr64 = addr[addressesList.getSelectedIndex()];//updateAddr(); //TODO: isn't address already updated in the dropdown's event handler?
+		//TODO: If I broke something, uncomment this first
 
 		resetPacketCounters();
-	}
-
-	/**
-	 * Send a packet to the remote XBee containing user defined text
-	 * @TODO: Remove, collect text on actionperformed and invoke single param analog
-	 * @void
-	 */
-	public void sendXBeePacket() {
-		String r = sendEdit.getText();
-		sendXBeePacket(r);
 	}
 
 	/**
